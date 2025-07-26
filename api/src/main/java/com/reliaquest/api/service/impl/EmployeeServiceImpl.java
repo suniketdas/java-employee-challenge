@@ -37,11 +37,11 @@ public class EmployeeServiceImpl implements EmployeeService {
                         .map(obj -> (Map<?, ?>) obj)
                         .map(obj -> new Employee(
                                 obj.get("id") == null ? null : obj.get("id").toString(),
-                                obj.get("name") == null ? null : obj.get("name").toString(),
-                                obj.get("salary") == null ? null : (Integer) obj.get("salary"),
-                                obj.get("age") == null ? null : (Integer) obj.get("age"),
-                                obj.get("title") == null ? null : obj.get("title").toString(),
-                                obj.get("email") == null ? null : obj.get("email").toString()))
+                                obj.get("employee_name") == null ? null : obj.get("employee_name").toString(),
+                                obj.get("employee_salary") == null ? null : (Integer) obj.get("employee_salary"),
+                                obj.get("employee_age") == null ? null : (Integer) obj.get("employee_age"),
+                                obj.get("employee_title") == null ? null : obj.get("employee_title").toString(),
+                                obj.get("employee_email") == null ? null : obj.get("employee_email").toString()))
                         .toList());
         return employees;
     }
