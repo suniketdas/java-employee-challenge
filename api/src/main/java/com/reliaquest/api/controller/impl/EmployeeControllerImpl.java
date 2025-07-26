@@ -5,16 +5,20 @@ import com.reliaquest.api.dto.request.EmployeeDto;
 import com.reliaquest.api.dto.response.Employee;
 import com.reliaquest.api.service.EmployeeService;
 import jakarta.validation.Valid;
+import java.util.List;
+
+import lombok.AllArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-
-@RestController("/api/v1/employeeDetails")
+@RestController
+@RequestMapping("/api/v1/employeeDetails")
 public class EmployeeControllerImpl implements IEmployeeController<Employee, EmployeeDto> {
 
     private final EmployeeService employeeService;
 
+    @Autowired
     public EmployeeControllerImpl(EmployeeService employeeService) {
         this.employeeService = employeeService;
     }
@@ -22,7 +26,8 @@ public class EmployeeControllerImpl implements IEmployeeController<Employee, Emp
     @GetMapping()
     public ResponseEntity<List<Employee>> getAllEmployees() {
         // Implementation logic here
-        return ResponseEntity.ok().build();
+        List<Employee> employees = employeeService.getAllEmployees();
+        return ResponseEntity.ok().body(employees);
     }
 
     @GetMapping("/search/{searchString}")
