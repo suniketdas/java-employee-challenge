@@ -1,16 +1,15 @@
 package com.reliaquest.api.service.impl;
 
 import com.reliaquest.api.dto.request.EmployeeCreationDto;
-import com.reliaquest.api.dto.response.Employee;
-import com.reliaquest.api.dto.response.EmployeeApiResponse;
-import com.reliaquest.api.dto.response.EmployeeByIdApiResponse;
-import com.reliaquest.api.dto.response.EmployeeServerDto;
+import com.reliaquest.api.dto.request.EmployeeDeletionDto;
+import com.reliaquest.api.dto.response.*;
 import com.reliaquest.api.exception.ResourceNotFoundException;
 import com.reliaquest.api.exception.TooManyRequestsException;
 import com.reliaquest.api.service.EmployeeService;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.PriorityQueue;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -37,21 +36,21 @@ public class EmployeeServiceImpl implements EmployeeService {
     }
 
     @Override
-    public List<Employee> getAllEmployees() {
-        List<Employee> employees = new ArrayList<>();
+    public List<EmployeeEntityDto> getAllEmployees() {
+        List<EmployeeEntityDto> employees = new ArrayList<>();
 
-        EmployeeApiResponse response = makeHttpRequest(
+        EmployeeListApiResponseDto response = makeHttpRequest(
                 BASE_URL,
                 HttpMethod.GET,
                 null,
-                EmployeeApiResponse.class,
+                EmployeeListApiResponseDto.class,
                 null,
                 null
         );
 
         if (response != null && response.getData() != null) {
             for (EmployeeServerDto employeeDto : response.getData()) {
-                Employee employee = convertToEmployee(employeeDto);
+                EmployeeEntityDto employee = convertToEmployee(employeeDto);
                 employees.add(employee);
             }
             log.info("Successfully fetched {} employees", employees.size());
@@ -63,22 +62,22 @@ public class EmployeeServiceImpl implements EmployeeService {
     }
 
     @Override
-    public List<Employee> getEmployeesByNameSearch(String searchString) {
-        List<Employee> employees = new ArrayList<>();
+    public List<EmployeeEntityDto> getEmployeesByNameSearch(String searchString) {
+        List<EmployeeEntityDto> employees = new ArrayList<>();
 
-        EmployeeApiResponse response = makeHttpRequest(
+        EmployeeListApiResponseDto response = makeHttpRequest(
                 BASE_URL,
                 HttpMethod.GET,
                 null,
-                EmployeeApiResponse.class,
+                EmployeeListApiResponseDto.class,
                 null,
                 null
         );
 
         if (response != null && response.getData() != null) {
             for (EmployeeServerDto employeeDto : response.getData()) {
-                if (employeeDto.getEmployee_name().toLowerCase().contains(searchString.toLowerCase())) {
-                    Employee employee = convertToEmployee(employeeDto);
+                if (employeeDto.getEmployeeName().toLowerCase().contains(searchString.toLowerCase())) {
+                    EmployeeEntityDto employee = convertToEmployee(employeeDto);
                     employees.add(employee);
                 }
             }
@@ -91,15 +90,15 @@ public class EmployeeServiceImpl implements EmployeeService {
     }
 
     @Override
-    public Employee getEmployeeById(String id) {
-        EmployeeByIdApiResponse response;
+    public EmployeeEntityDto getEmployeeById(String id) {
+        EmployeeApiResponseDto response;
 
         try {
             response = makeHttpRequest(
                     BASE_URL + "/" + id,
                     HttpMethod.GET,
                     null,
-                    EmployeeByIdApiResponse.class,
+                    EmployeeApiResponseDto.class,
                     null,
                     null
             );
@@ -119,22 +118,100 @@ public class EmployeeServiceImpl implements EmployeeService {
 
     @Override
     public Integer getHighestSalaryOfEmployees() {
-        return 0;
+        EmployeeListApiResponseDto response = makeHttpRequest(
+                BASE_URL,
+                HttpMethod.GET,
+                null,
+                EmployeeListApiResponseDto.class,
+                null,
+                null
+        );
+
+        if (response != null && response.getData() != null) {
+            return response.getData().stream()
+                    .mapToInt(EmployeeServerDto::getEmployeeSalary)
+                    .max()
+                    .orElse(0);
+        } else {
+            log.warn("No employees found or response is null");
+            return 0;
+        }
+
     }
 
     @Override
     public List<String> getTopTenHighestEarningEmployeeNames() {
-        return List.of();
+        EmployeeListApiResponseDto response = makeHttpRequest(
+                BASE_URL,
+                HttpMethod.GET,
+                null,
+                EmployeeListApiResponseDto.class,
+                null,
+                null
+        );
+
+        if (response != null && response.getData() != null) {
+            PriorityQueue<EmployeeServerDto> minHeap = new PriorityQueue<>((a, b) -> Integer.compare(a.getEmployeeSalary(), b.getEmployeeSalary()));
+            List<String> topTenNames = new ArrayList<>();
+
+            for (EmployeeServerDto employeeDto : response.getData()) {
+                if (employeeDto.getEmployeeSalary() == null) continue;
+
+                minHeap.offer(employeeDto);
+                if (minHeap.size() > 10)
+                    minHeap.poll();
+            }
+
+            while (!minHeap.isEmpty())
+                topTenNames.add(minHeap.poll().getEmployeeName());
+
+            log.info("Successfully fetched top ten highest earning employee names: {}", topTenNames);
+            return topTenNames;
+        } else {
+            log.warn("No employees found or response is null");
+            return List.of();
+        }
     }
 
     @Override
-    public Employee createEmployee(EmployeeCreationDto employeeInput) {
-        return null;
+    public EmployeeEntityDto createEmployee(EmployeeCreationDto employeeInput) {
+        EmployeeApiResponseDto response = makeHttpRequest(
+                BASE_URL,
+                HttpMethod.POST,
+                null,
+                EmployeeApiResponseDto.class,
+                null,
+                employeeInput
+        );
+
+        if (response != null && response.getData() != null) {
+            log.info("Successfully created employee: {}", response.getData());
+            return convertToEmployee(response.getData());
+        } else {
+            throw new RuntimeException("Failed to create employee. Response was null or empty.");
+        }
     }
 
     @Override
     public String deleteEmployeeById(String id) {
-        return "";
+        EmployeeEntityDto employee = getEmployeeById(id);
+
+        EmployeeDeletionApiResponseDto response = makeHttpRequest(
+                BASE_URL,
+                HttpMethod.DELETE,
+                null,
+                EmployeeDeletionApiResponseDto.class,
+                null,
+                new EmployeeDeletionDto(employee.getEmployeeName())
+        );
+
+        if (response != null && response.getData() != null) {
+            log.info("Successfully deleted employee: {}", response.getData());
+            return employee.getEmployeeName();
+        } else {
+            log.warn("Failed to delete employee with ID: {}", id);
+            return "";
+        }
     }
 
     private <T> T makeHttpRequest(
@@ -166,14 +243,14 @@ public class EmployeeServiceImpl implements EmployeeService {
         }
 
     }
-    private Employee convertToEmployee(EmployeeServerDto dto) {
-        return Employee.builder()
+    private EmployeeEntityDto convertToEmployee(EmployeeServerDto dto) {
+        return EmployeeEntityDto.builder()
                 .id(dto.getId())
-                .employee_email(dto.getEmployee_email())
-                .employee_name(dto.getEmployee_name())
-                .employee_salary(dto.getEmployee_salary())
-                .employee_title(dto.getEmployee_title())
-                .employee_age(dto.getEmployee_age())
+                .employeeEmail(dto.getEmployeeEmail())
+                .employeeName(dto.getEmployeeName())
+                .employeeSalary(dto.getEmployeeSalary())
+                .employeeTitle(dto.getEmployeeTitle())
+                .employeeAge(dto.getEmployeeAge())
                 .build();
     }
 }

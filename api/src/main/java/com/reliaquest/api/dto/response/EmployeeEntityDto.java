@@ -1,12 +1,15 @@
 package com.reliaquest.api.dto.response;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Data;
-
 import java.util.UUID;
 
-@Data
-public class EmployeeServerDto {
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.*;
+
+@Getter
+@AllArgsConstructor
+@NoArgsConstructor
+@Builder
+public class EmployeeEntityDto {
     @JsonProperty("id")
     private UUID id;
 
