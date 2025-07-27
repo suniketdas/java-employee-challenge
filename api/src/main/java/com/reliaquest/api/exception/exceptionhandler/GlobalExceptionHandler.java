@@ -11,13 +11,14 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ This class can be used to handle exceptions globally across all controllers
+ You can define methods annotated with @ExceptionHandler to handle specific exceptions
+ and return appropriate responses.
+ */
 @Slf4j
 @ControllerAdvice
 public class GlobalExceptionHandler {
-    /* This class can be used to handle exceptions globally across all controllers
-    You can define methods annotated with @ExceptionHandler to handle specific exceptions
-    and return appropriate responses.*/
-
     @ExceptionHandler(TooManyRequestsException.class)
     public ResponseEntity<String> handleTooManyRequests(TooManyRequestsException ex) {
         log.error("Too many requests: {}", ex.getMessage());
