@@ -6,7 +6,7 @@ import lombok.NoArgsConstructor;
 
 @Data
 @NoArgsConstructor
-public class EmployeeDto {
+public class EmployeeCreationDto {
 
     @NotBlank(message = "Name cannot be blank")
     private String name;

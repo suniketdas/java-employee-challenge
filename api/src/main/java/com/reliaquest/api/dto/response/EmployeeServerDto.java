@@ -1,13 +1,11 @@
 package com.reliaquest.api.dto.response;
 
-import java.util.UUID;
-import lombok.*;
+import lombok.Data;
 
-@Getter
-@AllArgsConstructor
-@NoArgsConstructor
-@Builder
-public class Employee {
+import java.util.UUID;
+
+@Data
+public class EmployeeServerDto {
     private UUID id;
     private String employee_email;
     private String employee_name;

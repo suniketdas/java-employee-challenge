@@ -1,5 +1,6 @@
 package com.reliaquest.api.service;
 
+import com.reliaquest.api.dto.request.EmployeeCreationDto;
 import com.reliaquest.api.dto.response.Employee;
 import java.util.List;
 import org.springframework.stereotype.Service;
@@ -15,7 +16,7 @@ public interface EmployeeService {
 
     List<String> getTopTenHighestEarningEmployeeNames();
 
-    Employee createEmployee(Employee employeeInput);
+    Employee createEmployee(EmployeeCreationDto employeeInput);
 
     String deleteEmployeeById(String id);
 }

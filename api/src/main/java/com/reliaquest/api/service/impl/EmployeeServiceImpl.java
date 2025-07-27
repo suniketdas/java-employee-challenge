@@ -1,17 +1,26 @@
 package com.reliaquest.api.service.impl;
 
+import com.reliaquest.api.dto.request.EmployeeCreationDto;
 import com.reliaquest.api.dto.response.Employee;
+import com.reliaquest.api.dto.response.EmployeeApiResponse;
+import com.reliaquest.api.dto.response.EmployeeByIdApiResponse;
+import com.reliaquest.api.dto.response.EmployeeServerDto;
+import com.reliaquest.api.exception.ResourceNotFoundException;
+import com.reliaquest.api.exception.TooManyRequestsException;
 import com.reliaquest.api.service.EmployeeService;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 import lombok.extern.slf4j.Slf4j;
-import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpClientErrorException.*;
 import org.springframework.web.client.RestTemplate;
 
 @Slf4j
@@ -29,31 +38,83 @@ public class EmployeeServiceImpl implements EmployeeService {
 
     @Override
     public List<Employee> getAllEmployees() {
-        // This method would typically make a REST call to the base URL to fetch all employees.
         List<Employee> employees = new ArrayList<>();
-        JSONObject resp = makeGetRequest(BASE_URL);
-        log.info("Response from Employee API: {}", resp.getJSONArray("data"));
-        employees.addAll(resp.getJSONArray("data").toList().stream()
-                        .map(obj -> (Map<?, ?>) obj)
-                        .map(obj -> new Employee(
-                                obj.get("id") == null ? null : obj.get("id").toString(),
-                                obj.get("employee_name") == null ? null : obj.get("employee_name").toString(),
-                                obj.get("employee_salary") == null ? null : (Integer) obj.get("employee_salary"),
-                                obj.get("employee_age") == null ? null : (Integer) obj.get("employee_age"),
-                                obj.get("employee_title") == null ? null : obj.get("employee_title").toString(),
-                                obj.get("employee_email") == null ? null : obj.get("employee_email").toString()))
-                        .toList());
+
+        EmployeeApiResponse response = makeHttpRequest(
+                BASE_URL,
+                HttpMethod.GET,
+                null,
+                EmployeeApiResponse.class,
+                null,
+                null
+        );
+
+        if (response != null && response.getData() != null) {
+            for (EmployeeServerDto employeeDto : response.getData()) {
+                Employee employee = convertToEmployee(employeeDto);
+                employees.add(employee);
+            }
+            log.info("Successfully fetched {} employees", employees.size());
+        } else {
+            log.warn("No employees found or response is null");
+        }
+
         return employees;
     }
 
     @Override
     public List<Employee> getEmployeesByNameSearch(String searchString) {
-        return List.of();
+        List<Employee> employees = new ArrayList<>();
+
+        EmployeeApiResponse response = makeHttpRequest(
+                BASE_URL,
+                HttpMethod.GET,
+                null,
+                EmployeeApiResponse.class,
+                null,
+                null
+        );
+
+        if (response != null && response.getData() != null) {
+            for (EmployeeServerDto employeeDto : response.getData()) {
+                if (employeeDto.getEmployee_name().toLowerCase().contains(searchString.toLowerCase())) {
+                    Employee employee = convertToEmployee(employeeDto);
+                    employees.add(employee);
+                }
+            }
+            log.info("Successfully fetched {} employees", employees.size());
+        } else {
+            log.warn("No employees found or response is null");
+        }
+
+        return employees;
     }
 
     @Override
     public Employee getEmployeeById(String id) {
-        return null;
+        EmployeeByIdApiResponse response;
+
+        try {
+            response = makeHttpRequest(
+                    BASE_URL + "/" + id,
+                    HttpMethod.GET,
+                    null,
+                    EmployeeByIdApiResponse.class,
+                    null,
+                    null
+            );
+        } catch (ResourceNotFoundException ex) {
+            throw new IllegalArgumentException("Employee with ID " + id + " not found.");
+        }
+
+        if (response != null && response.getData() != null) {
+            log.info("Successfully fetched employee: {}", response);
+
+            EmployeeServerDto employeeDto = response.getData();
+            return convertToEmployee(employeeDto);
+        } else {
+            throw new IllegalArgumentException("Employee with ID " + id + " not found.");
+        }
     }
 
     @Override
@@ -67,7 +128,7 @@ public class EmployeeServiceImpl implements EmployeeService {
     }
 
     @Override
-    public Employee createEmployee(Employee employeeInput) {
+    public Employee createEmployee(EmployeeCreationDto employeeInput) {
         return null;
     }
 
@@ -76,12 +137,43 @@ public class EmployeeServiceImpl implements EmployeeService {
         return "";
     }
 
-    private JSONObject makeGetRequest(String url) {
+    private <T> T makeHttpRequest(
+            String url,
+            HttpMethod httpMethod,
+            HttpHeaders headers,
+            Class<T> responseType,
+            Map<String, ?> uriVariables,
+            Object requestBody
+    ) throws HttpClientErrorException {
+        HttpEntity<?> entity = (requestBody != null) ? new HttpEntity<>(requestBody, headers)
+                : new HttpEntity<>(headers);
+
         try {
-            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, null, String.class);
-            return new JSONObject(response.getBody());
-        } catch (Exception e) {
-            throw new RuntimeException("Error : " + e.getMessage(), e);
+            ResponseEntity<T> response = restTemplate.exchange(
+                    url,
+                    httpMethod,
+                    entity,
+                    responseType,
+                    uriVariables != null ? uriVariables : Map.of()
+            );
+            return response.getBody();
+        } catch (TooManyRequests ex) {
+            throw new TooManyRequestsException("Too many requests made to the employee service. Please try again later.");
+        } catch (NotFound ex) {
+            throw new ResourceNotFoundException("Resource not found at URL: " + url);
+        } catch (Exception ex) {
+            throw new RuntimeException("An error occurred while making the HTTP request: " + ex.getMessage(), ex);
         }
+
+    }
+    private Employee convertToEmployee(EmployeeServerDto dto) {
+        return Employee.builder()
+                .id(dto.getId())
+                .employee_email(dto.getEmployee_email())
+                .employee_name(dto.getEmployee_name())
+                .employee_salary(dto.getEmployee_salary())
+                .employee_title(dto.getEmployee_title())
+                .employee_age(dto.getEmployee_age())
+                .build();
     }
 }
