@@ -1,15 +1,15 @@
 package com.reliaquest.api.service.impl;
 
+import com.reliaquest.api.config.MockEmployeeProperties;
 import com.reliaquest.api.dto.request.EmployeeCreationDto;
 import com.reliaquest.api.dto.request.EmployeeDeletionDto;
 import com.reliaquest.api.dto.response.*;
+import com.reliaquest.api.exception.EmployeeNotFoundException;
 import com.reliaquest.api.exception.ResourceNotFoundException;
 import com.reliaquest.api.exception.TooManyRequestsException;
 import com.reliaquest.api.service.EmployeeService;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.PriorityQueue;
+
+import java.util.*;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,7 +26,7 @@ import org.springframework.web.client.RestTemplate;
 @Service
 public class EmployeeServiceImpl implements EmployeeService {
 
-    private static final String BASE_URL = "http://localhost:8112/api/v1/employee";
+    private final MockEmployeeProperties mockEmployeeProperties;
 
     private final RestTemplate restTemplate;
 
@@ -36,8 +36,9 @@ public class EmployeeServiceImpl implements EmployeeService {
      * @param restTemplate the RestTemplate to make HTTP requests.
      */
     @Autowired
-    public EmployeeServiceImpl(RestTemplate restTemplate) {
+    public EmployeeServiceImpl(RestTemplate restTemplate, MockEmployeeProperties mockEmployeeProperties) {
         this.restTemplate = restTemplate;
+        this.mockEmployeeProperties = mockEmployeeProperties;
     }
 
     /**
@@ -49,23 +50,10 @@ public class EmployeeServiceImpl implements EmployeeService {
     public List<EmployeeEntityDto> getAllEmployees() {
         List<EmployeeEntityDto> employees = new ArrayList<>();
 
-        EmployeeListApiResponseDto response = makeHttpRequest(
-                BASE_URL,
-                HttpMethod.GET,
-                null,
-                EmployeeListApiResponseDto.class,
-                null,
-                null
-        );
-
-        if (response != null && response.getData() != null) {
-            for (EmployeeServerDto employeeDto : response.getData()) {
-                EmployeeEntityDto employee = convertToEmployee(employeeDto);
-                employees.add(employee);
-            }
-            log.info("Successfully fetched {} employees", employees.size());
-        } else {
-            log.warn("No employees found or response is null");
+        List<EmployeeServerDto> allEmployees = fetchAllEmployees();
+        for (EmployeeServerDto employeeDto : allEmployees) {
+            EmployeeEntityDto employee = convertToEmployee(employeeDto);
+            employees.add(employee);
         }
 
         return employees;
@@ -80,26 +68,13 @@ public class EmployeeServiceImpl implements EmployeeService {
     @Override
     public List<EmployeeEntityDto> getEmployeesByNameSearch(String searchString) {
         List<EmployeeEntityDto> employees = new ArrayList<>();
+        List<EmployeeServerDto> allEmployees = fetchAllEmployees();
 
-        EmployeeListApiResponseDto response = makeHttpRequest(
-                BASE_URL,
-                HttpMethod.GET,
-                null,
-                EmployeeListApiResponseDto.class,
-                null,
-                null
-        );
-
-        if (response != null && response.getData() != null) {
-            for (EmployeeServerDto employeeDto : response.getData()) {
-                if (employeeDto.getEmployeeName().toLowerCase().contains(searchString.toLowerCase())) {
-                    EmployeeEntityDto employee = convertToEmployee(employeeDto);
-                    employees.add(employee);
-                }
+        for (EmployeeServerDto employeeDto : allEmployees) {
+            if (employeeDto.getEmployeeName().toLowerCase().contains(searchString.toLowerCase())) {
+                EmployeeEntityDto employee = convertToEmployee(employeeDto);
+                employees.add(employee);
             }
-            log.info("Successfully fetched {} employees", employees.size());
-        } else {
-            log.warn("No employees found or response is null");
         }
 
         return employees;
@@ -118,7 +93,7 @@ public class EmployeeServiceImpl implements EmployeeService {
 
         try {
             response = makeHttpRequest(
-                    BASE_URL + "/" + id,
+                    mockEmployeeProperties.getUri() + "/" + id,
                     HttpMethod.GET,
                     null,
                     EmployeeApiResponseDto.class,
@@ -126,7 +101,7 @@ public class EmployeeServiceImpl implements EmployeeService {
                     null
             );
         } catch (ResourceNotFoundException ex) {
-            throw new IllegalArgumentException("Employee with ID " + id + " not found.");
+            throw new EmployeeNotFoundException("Employee with ID " + id + " not found.");
         }
 
         if (response != null && response.getData() != null) {
@@ -135,7 +110,7 @@ public class EmployeeServiceImpl implements EmployeeService {
             EmployeeServerDto employeeDto = response.getData();
             return convertToEmployee(employeeDto);
         } else {
-            throw new IllegalArgumentException("Employee with ID " + id + " not found.");
+            throw new EmployeeNotFoundException("Employee with ID " + id + " not found.");
         }
     }
 
@@ -146,25 +121,14 @@ public class EmployeeServiceImpl implements EmployeeService {
      */
     @Override
     public Integer getHighestSalaryOfEmployees() {
-        EmployeeListApiResponseDto response = makeHttpRequest(
-                BASE_URL,
-                HttpMethod.GET,
-                null,
-                EmployeeListApiResponseDto.class,
-                null,
-                null
-        );
+        List<EmployeeServerDto> allEmployees = fetchAllEmployees();
 
-        if (response != null && response.getData() != null) {
-            return response.getData().stream()
-                    .mapToInt(EmployeeServerDto::getEmployeeSalary)
-                    .max()
-                    .orElse(0);
-        } else {
-            log.warn("No employees found or response is null");
-            return 0;
-        }
-
+        return allEmployees.stream()
+                .map(EmployeeServerDto::getEmployeeSalary)
+                .filter(Objects::nonNull)
+                .mapToInt(Integer::intValue)
+                .max()
+                .orElse(-1);
     }
 
     /**
@@ -174,36 +138,24 @@ public class EmployeeServiceImpl implements EmployeeService {
      */
     @Override
     public List<String> getTopTenHighestEarningEmployeeNames() {
-        EmployeeListApiResponseDto response = makeHttpRequest(
-                BASE_URL,
-                HttpMethod.GET,
-                null,
-                EmployeeListApiResponseDto.class,
-                null,
-                null
-        );
+        List<EmployeeServerDto> allEmployees = fetchAllEmployees();
 
-        if (response != null && response.getData() != null) {
-            PriorityQueue<EmployeeServerDto> minHeap = new PriorityQueue<>((a, b) -> Integer.compare(a.getEmployeeSalary(), b.getEmployeeSalary()));
-            List<String> topTenNames = new ArrayList<>();
+        PriorityQueue<EmployeeServerDto> minHeap = new PriorityQueue<>((a, b) -> Integer.compare(a.getEmployeeSalary(), b.getEmployeeSalary()));
+        List<String> topTenNames = new ArrayList<>();
 
-            for (EmployeeServerDto employeeDto : response.getData()) {
-                if (employeeDto.getEmployeeSalary() == null) continue;
+        for (EmployeeServerDto employeeDto : allEmployees) {
+            if (employeeDto.getEmployeeSalary() == null) continue;
 
-                minHeap.offer(employeeDto);
-                if (minHeap.size() > 10)
-                    minHeap.poll();
-            }
-
-            while (!minHeap.isEmpty())
-                topTenNames.add(minHeap.poll().getEmployeeName());
-
-            log.info("Successfully fetched top ten highest earning employee names: {}", topTenNames);
-            return topTenNames;
-        } else {
-            log.warn("No employees found or response is null");
-            return List.of();
+            minHeap.offer(employeeDto);
+            if (minHeap.size() > 10)
+                minHeap.poll();
         }
+
+        while (!minHeap.isEmpty())
+            topTenNames.add(minHeap.poll().getEmployeeName());
+
+        log.info("Successfully fetched top ten highest earning employee names: {}", topTenNames);
+        return topTenNames;
     }
 
     /**
@@ -215,7 +167,7 @@ public class EmployeeServiceImpl implements EmployeeService {
     @Override
     public EmployeeEntityDto createEmployee(EmployeeCreationDto employeeInput) {
         EmployeeApiResponseDto response = makeHttpRequest(
-                BASE_URL,
+                mockEmployeeProperties.getUri(),
                 HttpMethod.POST,
                 null,
                 EmployeeApiResponseDto.class,
@@ -242,7 +194,7 @@ public class EmployeeServiceImpl implements EmployeeService {
         EmployeeEntityDto employee = getEmployeeById(id);
 
         EmployeeDeletionApiResponseDto response = makeHttpRequest(
-                BASE_URL,
+                mockEmployeeProperties.getUri(),
                 HttpMethod.DELETE,
                 null,
                 EmployeeDeletionApiResponseDto.class,
@@ -257,6 +209,30 @@ public class EmployeeServiceImpl implements EmployeeService {
             log.warn("Failed to delete employee with ID: {}", id);
             return "";
         }
+    }
+
+    /**
+     * Fetches all employees from the external API.
+     *
+     * @return List of EmployeeServerDto objects representing all employees.
+     */
+    private List<EmployeeServerDto> fetchAllEmployees() {
+        EmployeeListApiResponseDto response = makeHttpRequest(
+                mockEmployeeProperties.getUri(),
+                HttpMethod.GET,
+                null,
+                EmployeeListApiResponseDto.class,
+                null,
+                null
+        );
+
+        if (response == null || response.getData() == null) {
+            log.warn("No employees found or response is null");
+            return List.of();
+        }
+
+        log.info("Successfully fetched {} employees", response.getData().size());
+        return response.getData();
     }
 
     /**

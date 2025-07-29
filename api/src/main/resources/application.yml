@@ -1,2 +1,8 @@
 spring.application.name: employee-api
 server.port: 8111
+
+mock:
+  employee:
+    uri: http://localhost:8112/api/v1/employee
+    connect-timeout: 10
+    read-timeout: 30

@@ -1,5 +1,6 @@
 package com.reliaquest.api.exception.exceptionhandler;
 
+import com.reliaquest.api.exception.EmployeeNotFoundException;
 import com.reliaquest.api.exception.TooManyRequestsException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -44,5 +45,11 @@ public class GlobalExceptionHandler {
         ex.getBindingResult().getFieldErrors().forEach(error ->
                 errors.put(error.getField(), error.getDefaultMessage()));
         return ResponseEntity.badRequest().body(errors);
+    }
+
+    @ExceptionHandler(EmployeeNotFoundException.class)
+    public ResponseEntity<String> handleEmployeeNotFoundException(EmployeeNotFoundException ex) {
+        log.error("Employee not found: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ex.getMessage());
     }
 }
