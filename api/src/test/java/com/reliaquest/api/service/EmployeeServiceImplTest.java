@@ -5,7 +5,6 @@ import com.reliaquest.api.dto.request.EmployeeCreationDto;
 import com.reliaquest.api.dto.request.EmployeeDeletionDto;
 import com.reliaquest.api.dto.response.*;
 import com.reliaquest.api.exception.EmployeeNotFoundException;
-import com.reliaquest.api.exception.ResourceNotFoundException;
 import com.reliaquest.api.exception.TooManyRequestsException;
 
 import com.reliaquest.api.service.impl.EmployeeServiceImpl;
@@ -52,7 +51,6 @@ class EmployeeServiceImplTest {
 
     @Test
     void getAllEmployees_ShouldReturnListOfEmployees_WhenEmployeesExist() {
-        // Arrange
         List<EmployeeServerDto> serverEmployees = createMockServerEmployees();
         EmployeeListApiResponseDto responseDto = new EmployeeListApiResponseDto();
         responseDto.setData(serverEmployees);
@@ -65,15 +63,12 @@ class EmployeeServiceImplTest {
                 eq(Map.of())
         )).thenReturn(ResponseEntity.ok(responseDto));
 
-        // Act
         List<EmployeeEntityDto> result = employeeService.getAllEmployees();
 
-        // Assert
         assertNotNull(result);
         assertEquals(2, result.size());
 
         EmployeeEntityDto firstEmployee = result.get(0);
-        //assertEquals("1", firstEmployee.getId());
         assertEquals("John Doe", firstEmployee.getEmployeeName());
         assertEquals("john.doe@example.com", firstEmployee.getEmployeeEmail());
         assertEquals(50000, firstEmployee.getEmployeeSalary());
@@ -83,7 +78,6 @@ class EmployeeServiceImplTest {
 
     @Test
     void getAllEmployees_ShouldReturnEmptyList_WhenNoEmployeesExist() {
-        // Arrange
         EmployeeListApiResponseDto responseDto = new EmployeeListApiResponseDto();
         responseDto.setData(null);
 
@@ -95,17 +89,14 @@ class EmployeeServiceImplTest {
                 eq(Map.of())
         )).thenReturn(ResponseEntity.ok(responseDto));
 
-        // Act
         List<EmployeeEntityDto> result = employeeService.getAllEmployees();
 
-        // Assert
         assertNotNull(result);
         assertTrue(result.isEmpty());
     }
 
     @Test
     void getEmployeesByNameSearch_ShouldReturnMatchingEmployees_WhenSearchStringMatches() {
-        // Arrange
         String searchString = "john";
         List<EmployeeServerDto> serverEmployees = createMockServerEmployees();
         EmployeeListApiResponseDto responseDto = new EmployeeListApiResponseDto();
@@ -119,10 +110,8 @@ class EmployeeServiceImplTest {
                 eq(Map.of())
         )).thenReturn(ResponseEntity.ok(responseDto));
 
-        // Act
         List<EmployeeEntityDto> result = employeeService.getEmployeesByNameSearch(searchString);
 
-        // Assert
         assertNotNull(result);
         assertEquals(1, result.size());
         assertEquals("John Doe", result.get(0).getEmployeeName());
@@ -130,7 +119,6 @@ class EmployeeServiceImplTest {
 
     @Test
     void getEmployeesByNameSearch_ShouldReturnEmptyList_WhenNoMatches() {
-        // Arrange
         String searchString = "nonexistent";
         List<EmployeeServerDto> serverEmployees = createMockServerEmployees();
         EmployeeListApiResponseDto responseDto = new EmployeeListApiResponseDto();
@@ -144,17 +132,14 @@ class EmployeeServiceImplTest {
                 eq(Map.of())
         )).thenReturn(ResponseEntity.ok(responseDto));
 
-        // Act
         List<EmployeeEntityDto> result = employeeService.getEmployeesByNameSearch(searchString);
 
-        // Assert
         assertNotNull(result);
         assertTrue(result.isEmpty());
     }
 
     @Test
     void getEmployeeById_ShouldReturnEmployee_WhenEmployeeExists() {
-        // Arrange
         UUID employeeId = UUID.randomUUID();
         EmployeeServerDto serverEmployee = createMockServerEmployee(employeeId, "John Doe", "john.doe@example.com", 50000, "Developer", 30);
         EmployeeApiResponseDto responseDto = new EmployeeApiResponseDto();
@@ -168,10 +153,8 @@ class EmployeeServiceImplTest {
                 eq(Map.of())
         )).thenReturn(ResponseEntity.ok(responseDto));
 
-        // Act
         EmployeeEntityDto result = employeeService.getEmployeeById(employeeId.toString());
 
-        // Assert
         assertNotNull(result);
         assertEquals(employeeId, result.getId());
         assertEquals("John Doe", result.getEmployeeName());
@@ -179,7 +162,6 @@ class EmployeeServiceImplTest {
 
     @Test
     void getEmployeeById_ShouldThrowEmployeeNotFoundException_WhenEmployeeNotFound() {
-        // Arrange
         UUID employeeId = UUID.randomUUID();
 
         when(restTemplate.exchange(
@@ -196,7 +178,6 @@ class EmployeeServiceImplTest {
                 null
         ));
 
-        // Act & Assert
         EmployeeNotFoundException exception = assertThrows(
                 EmployeeNotFoundException.class,
                 () -> employeeService.getEmployeeById(employeeId.toString())
@@ -207,7 +188,6 @@ class EmployeeServiceImplTest {
 
     @Test
     void getEmployeeById_ShouldThrowEmployeeNotFoundException_WhenResponseDataIsNull() {
-        // Arrange
         UUID employeeId = UUID.randomUUID();
         EmployeeApiResponseDto responseDto = new EmployeeApiResponseDto();
         responseDto.setData(null);
@@ -220,7 +200,6 @@ class EmployeeServiceImplTest {
                 eq(Map.of())
         )).thenReturn(ResponseEntity.ok(responseDto));
 
-        // Act & Assert
         EmployeeNotFoundException exception = assertThrows(
                 EmployeeNotFoundException.class,
                 () -> employeeService.getEmployeeById(employeeId.toString())
@@ -231,7 +210,6 @@ class EmployeeServiceImplTest {
 
     @Test
     void getHighestSalaryOfEmployees_ShouldReturnHighestSalary_WhenEmployeesExist() {
-        // Arrange
         List<EmployeeServerDto> serverEmployees = Arrays.asList(
                 createMockServerEmployee(UUID.randomUUID(), "John Doe", "john@example.com", 50000, "Developer", 30),
                 createMockServerEmployee(UUID.randomUUID(), "Jane Smith", "jane@example.com", 75000, "Manager", 35),
@@ -248,16 +226,13 @@ class EmployeeServiceImplTest {
                 eq(Map.of())
         )).thenReturn(ResponseEntity.ok(responseDto));
 
-        // Act
         Integer result = employeeService.getHighestSalaryOfEmployees();
 
-        // Assert
         assertEquals(75000, result);
     }
 
     @Test
     void getHighestSalaryOfEmployees_ShouldReturnMinusOne_WhenNoEmployeesExist() {
-        // Arrange
         EmployeeListApiResponseDto responseDto = new EmployeeListApiResponseDto();
         responseDto.setData(Arrays.asList());
 
@@ -269,16 +244,13 @@ class EmployeeServiceImplTest {
                 eq(Map.of())
         )).thenReturn(ResponseEntity.ok(responseDto));
 
-        // Act
         Integer result = employeeService.getHighestSalaryOfEmployees();
 
-        // Assert
         assertEquals(-1, result);
     }
 
     @Test
     void getTopTenHighestEarningEmployeeNames_ShouldReturnTopTenNames_WhenMoreThanTenEmployees() {
-        // Arrange
         List<EmployeeServerDto> serverEmployees = createMockServerEmployeesForTopTen();
         EmployeeListApiResponseDto responseDto = new EmployeeListApiResponseDto();
         responseDto.setData(serverEmployees);
@@ -291,10 +263,8 @@ class EmployeeServiceImplTest {
                 eq(Map.of())
         )).thenReturn(ResponseEntity.ok(responseDto));
 
-        // Act
         List<String> result = employeeService.getTopTenHighestEarningEmployeeNames();
 
-        // Assert
         assertNotNull(result);
         assertEquals(10, result.size());
         assertTrue(result.contains("Employee 15")); // Highest salary
@@ -303,7 +273,6 @@ class EmployeeServiceImplTest {
 
     @Test
     void getTopTenHighestEarningEmployeeNames_ShouldSkipEmployeesWithNullSalary() {
-        // Arrange
         List<EmployeeServerDto> serverEmployees = Arrays.asList(
                 createMockServerEmployee(UUID.randomUUID(), "John Doe", "john@example.com", null, "Developer", 30),
                 createMockServerEmployee(UUID.randomUUID(), "Jane Smith", "jane@example.com", 50000, "Manager", 35)
@@ -319,10 +288,8 @@ class EmployeeServiceImplTest {
                 eq(Map.of())
         )).thenReturn(ResponseEntity.ok(responseDto));
 
-        // Act
         List<String> result = employeeService.getTopTenHighestEarningEmployeeNames();
 
-        // Assert
         assertNotNull(result);
         assertEquals(1, result.size());
         assertEquals("Jane Smith", result.get(0));
@@ -330,7 +297,6 @@ class EmployeeServiceImplTest {
 
     @Test
     void createEmployee_ShouldReturnCreatedEmployee_WhenSuccessful() {
-        // Arrange
         EmployeeCreationDto creationDto = new EmployeeCreationDto();
         creationDto.setName("New Employee");
         creationDto.setSalary(60000);
@@ -349,10 +315,8 @@ class EmployeeServiceImplTest {
                 eq(Map.of())
         )).thenReturn(ResponseEntity.ok(responseDto));
 
-        // Act
         EmployeeEntityDto result = employeeService.createEmployee(creationDto);
 
-        // Assert
         assertNotNull(result);
         assertEquals(newEmployeeId, result.getId());
         assertEquals("New Employee", result.getEmployeeName());
@@ -361,7 +325,6 @@ class EmployeeServiceImplTest {
 
     @Test
     void createEmployee_ShouldThrowRuntimeException_WhenResponseIsNull() {
-        // Arrange
         EmployeeCreationDto creationDto = new EmployeeCreationDto();
         creationDto.setName("New Employee");
 
@@ -373,7 +336,6 @@ class EmployeeServiceImplTest {
                 eq(Map.of())
         )).thenReturn(ResponseEntity.ok(null));
 
-        // Act & Assert
         RuntimeException exception = assertThrows(
                 RuntimeException.class,
                 () -> employeeService.createEmployee(creationDto)
@@ -384,7 +346,6 @@ class EmployeeServiceImplTest {
 
     @Test
     void deleteEmployeeById_ShouldReturnEmployeeName_WhenSuccessful() {
-        // Arrange
         UUID employeeId = UUID.randomUUID();
         String employeeName = "John Doe";
 
@@ -413,10 +374,8 @@ class EmployeeServiceImplTest {
                 eq(Map.of())
         )).thenReturn(ResponseEntity.ok(deleteResponseDto));
 
-        // Act
         String result = employeeService.deleteEmployeeById(employeeId.toString());
 
-        // Assert
         assertEquals(employeeName, result);
 
         // Verify the delete request body
@@ -439,7 +398,6 @@ class EmployeeServiceImplTest {
 
     @Test
     void deleteEmployeeById_ShouldReturnEmptyString_WhenDeleteResponseIsNull() {
-        // Arrange
         UUID employeeId = UUID.randomUUID();
         String employeeName = "John Doe";
 
@@ -465,16 +423,13 @@ class EmployeeServiceImplTest {
                 eq(Map.of())
         )).thenReturn(ResponseEntity.ok(null));
 
-        // Act
         String result = employeeService.deleteEmployeeById(employeeId.toString());
 
-        // Assert
         assertEquals("", result);
     }
 
     @Test
     void makeHttpRequest_ShouldThrowTooManyRequestsException_WhenTooManyRequestsThrown() {
-        // Arrange
         EmployeeListApiResponseDto responseDto = new EmployeeListApiResponseDto();
         responseDto.setData(null);
 
@@ -492,7 +447,6 @@ class EmployeeServiceImplTest {
                 null
         ));
 
-        // Act & Assert
         TooManyRequestsException exception = assertThrows(
                 TooManyRequestsException.class,
                 () -> employeeService.getAllEmployees()
@@ -503,7 +457,6 @@ class EmployeeServiceImplTest {
 
     @Test
     void makeHttpRequest_ShouldThrowRuntimeException_WhenGenericExceptionOccurs() {
-        // Arrange
         when(restTemplate.exchange(
                 eq(BASE_URI),
                 eq(HttpMethod.GET),
@@ -512,7 +465,6 @@ class EmployeeServiceImplTest {
                 eq(Map.of())
         )).thenThrow(new RuntimeException("Generic error"));
 
-        // Act & Assert
         RuntimeException exception = assertThrows(
                 RuntimeException.class,
                 () -> employeeService.getAllEmployees()
@@ -521,7 +473,6 @@ class EmployeeServiceImplTest {
         assertTrue(exception.getMessage().contains("An error occurred while making the HTTP request"));
     }
 
-    // Helper methods
     private List<EmployeeServerDto> createMockServerEmployees() {
         return Arrays.asList(
                 createMockServerEmployee(UUID.randomUUID(), "John Doe", "john.doe@example.com", 50000, "Developer", 30),
